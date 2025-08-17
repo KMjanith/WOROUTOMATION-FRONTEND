@@ -43,6 +43,7 @@ const RecipeConfig = () => {
     type: 'success' | 'error'
     message: string
   } | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const fetchConfigFiles = async () => {
@@ -155,6 +156,37 @@ const RecipeConfig = () => {
 
   const hideToast = () => {
     setToast(null);
+  }
+
+  // Function to filter services based on search term
+  const filterServices = (services: string[]) => {
+    if (!searchTerm.trim()) {
+      return services;
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    return services.filter(service => {
+      const serviceName = service.replace('#', '').toLowerCase().trim();
+      const originalService = service.toLowerCase().trim();
+      
+      // Exact match gets priority
+      if (serviceName === searchLower || originalService === searchLower) {
+        return true;
+      }
+      
+      // Then check if the service starts with the search term
+      if (serviceName.startsWith(searchLower) || originalService.startsWith(searchLower)) {
+        return true;
+      }
+      
+      // Finally, partial match (but only if search term is longer than 2 characters to avoid too many matches)
+      if (searchLower.length > 2) {
+        return serviceName.includes(searchLower) || originalService.includes(searchLower);
+      }
+      
+      return false;
+    });
   }
 
   const handleUpdateRecipe = async (fileName: string) => {
@@ -316,6 +348,30 @@ const RecipeConfig = () => {
         {deploymentConfig && (
           <div className="config-file">
             <h3 className="file-name">{deploymentConfig.fileName}</h3>
+            
+            {/* Search Input for filtering services */}
+            <div className="search-container">
+              <input
+                type="text"
+                placeholder="Search deployment services..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              <button className="search-button" type="button">
+                Search
+              </button>
+              {searchTerm && (
+                <button 
+                  className="clear-button" 
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
             {deploymentConfig.error ? (
               <div className="file-error">
                 <p>{deploymentConfig.error}</p>
@@ -330,25 +386,36 @@ const RecipeConfig = () => {
                         {/* Handle list values for deployment.services - show only the items */}
                         {Array.isArray(item.value) ? (
                           <div className="config-list">
-                            {item.value.map((listItem, listIndex) => (
-                              <div key={listIndex} className={`list-item ${listItem.startsWith('#') ? 'commented' : ''}`}>
-                                <span className="list-value">{listItem}</span>
-                                <div className="list-item-actions">
-                                  <button 
-                                    className="action-btn comment-btn"
-                                    onClick={() => handleCommentListItem(deploymentConfig.fileName, itemIndex, listIndex)}
-                                  >
-                                    {listItem.startsWith('#') ? 'Uncomment' : 'Comment'}
-                                  </button>
-                                  <button 
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDeleteListItem(deploymentConfig.fileName, itemIndex, listIndex)}
-                                  >
-                                    Delete
-                                  </button>
+                            {filterServices(item.value).map((listItem) => {
+                              // Find the original index in the unfiltered array
+                              const actualIndex = item.value.indexOf(listItem);
+                              return (
+                                <div key={actualIndex} className={`list-item ${listItem.startsWith('#') ? 'commented' : ''}`}>
+                                  <span className="list-value">{listItem}</span>
+                                  <div className="list-item-actions">
+                                    <button 
+                                      className="action-btn comment-btn"
+                                      onClick={() => handleCommentListItem(deploymentConfig.fileName, itemIndex, actualIndex)}
+                                    >
+                                      {listItem.startsWith('#') ? 'Uncomment' : 'Comment'}
+                                    </button>
+                                    <button 
+                                      className="action-btn delete-btn"
+                                      onClick={() => handleDeleteListItem(deploymentConfig.fileName, itemIndex, actualIndex)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
+                              )
+                            })}
+                            
+                            {/* Show message when search has no results */}
+                            {searchTerm && filterServices(item.value).length === 0 && (
+                              <div className="no-results">
+                                <p>No services found matching "{searchTerm}"</p>
                               </div>
-                            ))}
+                            )}
                           </div>
                         ) : (
                           <div className={`config-item ${item.commented ? 'commented' : ''}`}>
