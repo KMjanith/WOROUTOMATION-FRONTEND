@@ -1,0 +1,96 @@
+.side-panel {
+  position: fixed;
+  left: 0;
+  top: 80px; /* Account for navbar */
+  width: 280px;
+  height: calc(100vh - 80px);
+  background-color: #f0fdf4;
+  border-right: 2px solid #dcfce7;
+  box-shadow: 2px 0 10px rgba(45, 90, 61, 0.1);
+  z-index: 500;
+  overflow-y: auto;
+  transition: width 0.3s ease;
+}
+
+.side-panel.collapsed {
+  width: 60px;
+}
+
+.panel-header {
+  padding: 1.5rem;
+  background-color: #2d5a3d;
+  color: white;
+  border-bottom: 1px solid #dcfce7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #bbf7d0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  width: 18px;
+  height: 14px;
+  justify-content: space-between;
+}
+
+.hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #bbf7d0;
+}
+
+.panel-menu {
+  padding: 0;
+}
+
+.panel-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.panel-menu li {
+  border-bottom: 1px solid #dcfce7;
+}
+
+.menu-item {
+  display: block;
+  padding: 1rem 1.5rem;
+  color: #2d5a3d;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.menu-item:hover {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border-left-color: #22c55e;
+  transform: translateX(5px);
+}
+
+.menu-item:active {
+  background-color: #bbf7d0;
+}

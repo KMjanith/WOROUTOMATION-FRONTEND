@@ -1,0 +1,47 @@
+.header {
+  margin-top: 80px; /* Account for fixed navbar */
+  padding: 0.5rem;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 0.5rem 0 0 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-section h1 {
+  color: #2d5a3d;
+  font-size: 2.5rem;
+  margin-bottom: 0;
+}
+
+.platform-text {
+  color: #2d5a3d;
+}
+
+.hummingbird-text {
+  color: #22c55e;
+}
+
+.hero-section p {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 0;
+  line-height: 1.4;
+}
+
+.cta-button {
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.cta-button:hover {
+  background-color: #16a34a;
+}
