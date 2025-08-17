@@ -1,6 +1,6 @@
 .recipe-config {
   padding: 0 0.5rem 0.5rem 0.5rem;
-  max-width: 1200px;
+  max-width: 1600px;
   margin: -0.5rem auto 0 auto;
 }
 
@@ -23,8 +23,8 @@
 
 .config-files {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .config-file {
@@ -134,6 +134,69 @@
   border: 1px dashed #d1d5db;
 }
 
+.config-object {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.object-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.object-name {
+  font-weight: 600;
+  color: #2d5a3d;
+  font-size: 1rem;
+}
+
+.object-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.object-content {
+  margin-top: 0.75rem;
+}
+
+.object-value {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #374151;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.edit-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #dcfce7;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 150px;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
 .file-name::before {
   content: "📄";
   margin-right: 0.5rem;
@@ -144,6 +207,21 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/* Container for uncommented items - display in grid/row layout */
+.config-items-uncommented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Container for commented items - display in column layout */
+.config-items-commented {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .config-item {
@@ -157,24 +235,54 @@
   font-family: 'Courier New', monospace;
   font-size: 0.75rem;
   transition: all 0.3s ease;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+  min-height: 3rem;
 }
 
 .config-item:hover {
   box-shadow: 0 1px 4px rgba(45, 90, 61, 0.1);
 }
 
-.config-content {
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  flex: 1;
-  gap: 0.25rem;
+/* Style for commented items */
+.config-item.commented {
+  background-color: #f3f4f6;
+  opacity: 0.7;
+  border-left: 4px solid #6b7280;
 }
 
-.config-content > div:first-child {
+.config-item.commented .config-key {
+  color: #6b7280;
+}
+
+.config-item.commented .config-value {
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  font-style: italic;
+}
+
+/* Style for uncommented items in grid layout - grey appearance */
+.config-items-uncommented .config-item {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 0;
+}
+
+.config-items-uncommented .config-item .config-key {
+  color: #64748b;
+}
+
+.config-items-uncommented .config-item .config-value {
+  color: #64748b;
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.config-content {
   display: flex;
   align-items: center;
+  flex-direction: row;
+  flex: 1;
   gap: 0.5rem;
 }
 
@@ -200,9 +308,9 @@
 }
 
 .config-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
   width: 100%;
 }
 
@@ -213,8 +321,9 @@
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  min-height: 2rem;
 }
 
 .list-item.commented {
