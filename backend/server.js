@@ -22,16 +22,20 @@ function parseConfFile(filePath) {
     const lines = content.split('\n');
     const items = [];
     let currentKey = null;
-    let currentValue = null;
     let inMultiLineList = false;
+    let inObject = false;
+    let inOverridesBlock = false;
     let listItems = [];
+    let objectLines = [];
+    let objectBraceCount = 0;
+    let objectIsCommented = false;
+    let overridesBraceCount = 0;
     
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
       
-      // Handle comments and empty lines differently in lists vs regular parsing
+      // Handle multi-line list continuation
       if (inMultiLineList) {
-        // In multi-line lists, we want to preserve comments as list items
         if (trimmedLine === ']') {
           // End of multi-line list
           items.push({ key: currentKey, value: listItems });
@@ -55,42 +59,232 @@ function parseConfFile(filePath) {
         return;
       }
       
-      // Skip empty lines and comments for regular key-value pairs
-      if (!trimmedLine || (trimmedLine.startsWith('#') && !inMultiLineList) || trimmedLine.startsWith(';')) {
+      // Handle object parsing inside overrides block
+      if (inObject && inOverridesBlock) {
+        objectLines.push(line); // Keep original line with indentation
+        
+        // Count braces to handle nested objects
+        const openBraces = (trimmedLine.match(/\{/g) || []).length;
+        const closeBraces = (trimmedLine.match(/\}/g) || []).length;
+        objectBraceCount += openBraces - closeBraces;
+        
+        if (objectBraceCount === 0 && trimmedLine.includes('}')) {
+          // End of object - store the entire object as one item
+          inObject = false;
+          const objectValue = objectLines.join('\n');
+          items.push({ 
+            key: currentKey, 
+            value: objectValue,
+            isObject: true,
+            commented: objectIsCommented
+          });
+          currentKey = null;
+          objectLines = [];
+          objectIsCommented = false;
+        }
         return;
       }
       
-      // Look for key=value pairs
-      const equalIndex = trimmedLine.indexOf('=');
-      if (equalIndex > 0) {
-        const key = trimmedLine.substring(0, equalIndex).trim();
-        let value = trimmedLine.substring(equalIndex + 1).trim();
+      // Skip empty lines
+      if (!trimmedLine) {
+        return;
+      }
+      
+      // Check for overrides block start/end
+      if (!inOverridesBlock && trimmedLine.match(/^overrides\s*\{/)) {
+        inOverridesBlock = true;
+        overridesBraceCount = 1;
+        return;
+      }
+      
+      if (inOverridesBlock) {
+        // Count braces for overrides block
+        const openBraces = (trimmedLine.match(/\{/g) || []).length;
+        const closeBraces = (trimmedLine.match(/\}/g) || []).length;
+        overridesBraceCount += openBraces - closeBraces;
         
-        // Handle different list formats
-        if (value === '[') {
-          // Start of multi-line list
-          inMultiLineList = true;
-          currentKey = key;
-          listItems = [];
-        } else if (value.startsWith('[') && value.endsWith(']')) {
-          // Single-line list
-          const listContent = value.slice(1, -1).trim();
-          if (listContent === '') {
-            value = [];
-          } else {
-            value = listContent.split(',').map(item => item.trim()).filter(item => item !== '');
+        // If we're at the end of overrides block, stop processing
+        if (overridesBraceCount === 0 && trimmedLine === '}') {
+          inOverridesBlock = false;
+          return;
+        }
+        
+        // Process content inside overrides block
+        const equalIndex = trimmedLine.indexOf('=');
+        
+        // Look for object pattern: key { or #key { (inside overrides block)
+        const objectMatch = trimmedLine.match(/^(#?)(\s*)([^=\s]+)\s*\{/);
+        if (objectMatch) {
+          // This is the start of an object inside overrides
+          const [, commentPrefix, , objectKey] = objectMatch;
+          inObject = true;
+          currentKey = objectKey;
+          objectLines = [line]; // Start with the current line
+          objectBraceCount = 1;
+          objectIsCommented = commentPrefix === '#';
+          
+          // Check if it's a single-line object
+          if (trimmedLine.includes('}')) {
+            const openBraces = (trimmedLine.match(/\{/g) || []).length;
+            const closeBraces = (trimmedLine.match(/\}/g) || []).length;
+            objectBraceCount = openBraces - closeBraces;
+            
+            if (objectBraceCount === 0) {
+              // Complete single-line object
+              inObject = false;
+              items.push({ 
+                key: currentKey, 
+                value: line,
+                isObject: true,
+                commented: objectIsCommented 
+              });
+              currentKey = null;
+              objectLines = [];
+              objectIsCommented = false;
+            }
           }
-          items.push({ key, value });
-        } else {
-          // Regular key-value pair
-          items.push({ key, value });
+          return;
+        }
+        
+        // Handle regular key=value pairs inside overrides block
+        if (equalIndex > 0) {
+          let key, value;
+          let commented = false;
+          
+          // Check if line is commented
+          if (trimmedLine.startsWith('#')) {
+            commented = true;
+            // Remove the # and parse the key=value
+            const cleanLine = trimmedLine.substring(1).trim();
+            const cleanEqualIndex = cleanLine.indexOf('=');
+            if (cleanEqualIndex > 0) {
+              key = cleanLine.substring(0, cleanEqualIndex).trim();
+              value = cleanLine.substring(cleanEqualIndex + 1).trim();
+            }
+          } else {
+            // Regular uncommented line
+            key = trimmedLine.substring(0, equalIndex).trim();
+            value = trimmedLine.substring(equalIndex + 1).trim();
+          }
+          
+          if (key && value !== undefined) {
+            // Handle different list formats
+            if (value === '[') {
+              // Start of multi-line list
+              inMultiLineList = true;
+              currentKey = key;
+              listItems = [];
+            } else if (value.startsWith('[') && value.endsWith(']')) {
+              // Single-line list
+              const listContent = value.slice(1, -1).trim();
+              if (listContent === '') {
+                value = [];
+              } else {
+                value = listContent.split(',').map(item => item.trim()).filter(item => item !== '');
+              }
+              items.push({ key, value, commented });
+            } else {
+              // Regular key-value pair
+              items.push({ key, value, commented });
+            }
+          }
+        }
+      } else {
+        // Handle items outside overrides block (if any) - for deployment.conf etc.
+        const equalIndex = trimmedLine.indexOf('=');
+        
+        // Look for object pattern: key { or #key {
+        const objectMatch = trimmedLine.match(/^(#?)(\s*)([^=\s]+)\s*\{/);
+        if (objectMatch) {
+          // This is the start of an object
+          const [, commentPrefix, , objectKey] = objectMatch;
+          inObject = true;
+          currentKey = objectKey;
+          objectLines = [line]; // Start with the current line
+          objectBraceCount = 1;
+          objectIsCommented = commentPrefix === '#';
+          
+          // Check if it's a single-line object
+          if (trimmedLine.includes('}')) {
+            const openBraces = (trimmedLine.match(/\{/g) || []).length;
+            const closeBraces = (trimmedLine.match(/\}/g) || []).length;
+            objectBraceCount = openBraces - closeBraces;
+            
+            if (objectBraceCount === 0) {
+              // Complete single-line object
+              inObject = false;
+              items.push({ 
+                key: currentKey, 
+                value: line,
+                isObject: true,
+                commented: objectIsCommented 
+              });
+              currentKey = null;
+              objectLines = [];
+              objectIsCommented = false;
+            }
+          }
+          return;
+        }
+        
+        // Handle regular key=value pairs
+        if (equalIndex > 0) {
+          let key, value;
+          let commented = false;
+          
+          // Check if line is commented
+          if (trimmedLine.startsWith('#')) {
+            commented = true;
+            // Remove the # and parse the key=value
+            const cleanLine = trimmedLine.substring(1).trim();
+            const cleanEqualIndex = cleanLine.indexOf('=');
+            if (cleanEqualIndex > 0) {
+              key = cleanLine.substring(0, cleanEqualIndex).trim();
+              value = cleanLine.substring(cleanEqualIndex + 1).trim();
+            }
+          } else {
+            // Regular uncommented line
+            key = trimmedLine.substring(0, equalIndex).trim();
+            value = trimmedLine.substring(equalIndex + 1).trim();
+          }
+          
+          if (key && value !== undefined) {
+            // Handle different list formats
+            if (value === '[') {
+              // Start of multi-line list
+              inMultiLineList = true;
+              currentKey = key;
+              listItems = [];
+            } else if (value.startsWith('[') && value.endsWith(']')) {
+              // Single-line list
+              const listContent = value.slice(1, -1).trim();
+              if (listContent === '') {
+                value = [];
+              } else {
+                value = listContent.split(',').map(item => item.trim()).filter(item => item !== '');
+              }
+              items.push({ key, value, commented });
+            } else {
+              // Regular key-value pair
+              items.push({ key, value, commented });
+            }
+          }
         }
       }
     });
     
-    // Handle case where file ends while in multi-line list
+    // Handle case where file ends while in multi-line list or object
     if (inMultiLineList && currentKey) {
       items.push({ key: currentKey, value: listItems });
+    }
+    if (inObject && currentKey) {
+      const objectValue = objectLines.join('\n');
+      items.push({ 
+        key: currentKey, 
+        value: objectValue,
+        isObject: true,
+        commented: objectIsCommented
+      });
     }
     
     return items;
@@ -100,6 +294,7 @@ function parseConfFile(filePath) {
   }
 }
 
+// API endpoint to get configuration files
 // API endpoint to get configuration files
 app.get('/api/config', (req, res) => {
   try {
@@ -172,19 +367,67 @@ app.post('/api/config/save', (req, res) => {
     // Convert items back to file format
     let fileContent = '';
     
-    items.forEach(item => {
-      if (Array.isArray(item.value)) {
-        // Handle list items (like deployment.services)
-        fileContent += `${item.key} = [\n\n`;
-        item.value.forEach(listItem => {
-          fileContent += `    ${listItem},\n`;
-        });
-        fileContent += '\n]\n\n';
-      } else {
-        // Handle regular key-value pairs
-        fileContent += `${item.key} = ${item.value}\n`;
-      }
-    });
+    // Check if this is overrides.conf which needs special formatting
+    if (fileName === 'overrides.conf') {
+      fileContent = 'overrides {\n';
+      
+      items.forEach(item => {
+        if (item.isObject) {
+          // Handle object blocks - preserve the original formatting
+          let objectContent = item.value;
+          
+          // If it's commented, add # at the beginning of the first line
+          if (item.commented) {
+            const lines = objectContent.split('\n');
+            if (lines.length > 0) {
+              lines[0] = '#' + lines[0];
+              objectContent = lines.join('\n');
+            }
+          } else {
+            // If it's uncommented, remove # from the beginning if present
+            const lines = objectContent.split('\n');
+            if (lines.length > 0 && lines[0].trim().startsWith('#')) {
+              lines[0] = lines[0].replace(/^(\s*)#/, '$1');
+              objectContent = lines.join('\n');
+            }
+          }
+          
+          fileContent += objectContent + '\n';
+        } else if (Array.isArray(item.value)) {
+          // Handle list items (if any in overrides)
+          fileContent += `${item.key} = [\n`;
+          item.value.forEach(listItem => {
+            fileContent += `    ${listItem},\n`;
+          });
+          fileContent += ']\n';
+        } else {
+          // Handle regular key-value pairs
+          const prefix = item.commented ? '#' : '';
+          fileContent += `${prefix}${item.key} = ${item.value}\n`;
+        }
+      });
+      
+      fileContent += '}\n';
+    } else {
+      // Handle other files (like deployment.conf)
+      items.forEach(item => {
+        if (item.isObject) {
+          // Handle object blocks
+          fileContent += item.value + '\n';
+        } else if (Array.isArray(item.value)) {
+          // Handle list items (like deployment.services)
+          fileContent += `${item.key} = [\n\n`;
+          item.value.forEach(listItem => {
+            fileContent += `    ${listItem},\n`;
+          });
+          fileContent += '\n]\n\n';
+        } else {
+          // Handle regular key-value pairs
+          const prefix = item.commented ? '#' : '';
+          fileContent += `${prefix}${item.key} = ${item.value}\n`;
+        }
+      });
+    }
     
     // Write to file
     fs.writeFileSync(filePath, fileContent, 'utf8');

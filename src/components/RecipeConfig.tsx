@@ -5,6 +5,7 @@ interface ConfigItem {
   key: string
   value: string | string[]
   commented?: boolean
+  isObject?: boolean
 }
 
 interface ConfigData {
@@ -58,7 +59,7 @@ const RecipeConfig = () => {
         const result: ApiResponse = await response.json()
         
         if (result.success) {
-          // Parse list values for deployment.services
+          // Parse list values for deployment.services and special objects for overrides
           const parsedData = result.data.map(config => ({
             ...config,
             items: config.items.map(item => {
@@ -67,6 +68,7 @@ const RecipeConfig = () => {
                 const listItems = item.value.split(',').map(v => v.trim()).filter(v => v)
                 return { ...item, value: listItems }
               }
+              // Backend already handles object detection and commented status
               return item
             })
           }))
@@ -158,6 +160,12 @@ const RecipeConfig = () => {
     setToast(null);
   }
 
+  // Process configuration data without hardcoded defaults
+  const processConfigData = (config: ConfigData) => {
+    // Just return the config as-is, backend now handles commented detection
+    return config;
+  }
+
   // Function to filter services based on search term
   const filterServices = (services: string[]) => {
     if (!searchTerm.trim()) {
@@ -183,6 +191,45 @@ const RecipeConfig = () => {
       // Finally, partial match (but only if search term is longer than 2 characters to avoid too many matches)
       if (searchLower.length > 2) {
         return serviceName.includes(searchLower) || originalService.includes(searchLower);
+      }
+      
+      return false;
+    });
+  }
+
+  // Function to filter overrides items based on search term
+  const filterOverridesItems = (items: ConfigItem[]) => {
+    if (!searchTerm.trim()) {
+      return items;
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    return items.filter(item => {
+      const keyName = item.key.toLowerCase().trim();
+      
+      // For objects, also search in the content
+      if (item.isObject && typeof item.value === 'string') {
+        const objectContent = item.value.toLowerCase();
+        return keyName.includes(searchLower) || objectContent.includes(searchLower);
+      }
+      
+      // For regular key-value pairs, search in key and value
+      const itemValue = typeof item.value === 'string' ? item.value.toLowerCase() : '';
+      
+      // Exact match gets priority
+      if (keyName === searchLower) {
+        return true;
+      }
+      
+      // Then check if the key starts with the search term
+      if (keyName.startsWith(searchLower)) {
+        return true;
+      }
+      
+      // Finally, partial match in key or value (if search term is longer than 2 characters)
+      if (searchLower.length > 2) {
+        return keyName.includes(searchLower) || itemValue.includes(searchLower);
       }
       
       return false;
@@ -234,6 +281,26 @@ const RecipeConfig = () => {
                   }
                   return listItem
                 })
+              }
+            }
+            return item
+          })
+        }
+      }
+      return config
+    }))
+  }
+
+  const handleCommentItem = (fileName: string, itemIndex: number) => {
+    setConfigData(prev => prev.map(config => {
+      if (config.fileName === fileName) {
+        return {
+          ...config,
+          items: config.items.map((item, index) => {
+            if (index === itemIndex && !item.isObject && !Array.isArray(item.value)) {
+              return {
+                ...item,
+                commented: !item.commented
               }
             }
             return item
@@ -336,8 +403,12 @@ const RecipeConfig = () => {
     )
   }
 
-  // Filter to show only deployment.conf
+  // Filter to show both deployment.conf and overrides.conf
   const deploymentConfig = configData.find(config => config.fileName === 'deployment.conf')
+  const overridesConfig = configData.find(config => config.fileName === 'overrides.conf')
+  
+  // Process overrides config data
+  const processedOverridesConfig = overridesConfig ? processConfigData(overridesConfig) : null
 
   return (
     <div className="recipe-config">
@@ -345,6 +416,7 @@ const RecipeConfig = () => {
       <p className="config-path">Reading from: {directory}</p>
       
       <div className="config-files">
+        {/* Deployment Configuration */}
         {deploymentConfig && (
           <div className="config-file">
             <h3 className="file-name">{deploymentConfig.fileName}</h3>
@@ -447,6 +519,12 @@ const RecipeConfig = () => {
                                 onClick={() => handleStartEdit(deploymentConfig.fileName, itemIndex, item.value as string)}
                               >
                                 Update
+                              </button>
+                              <button 
+                                className="action-btn comment-btn"
+                                onClick={() => handleCommentItem(deploymentConfig.fileName, itemIndex)}
+                              >
+                                {item.commented ? 'Uncomment' : 'Comment'}
                               </button>
                               <button 
                                 className="action-btn delete-btn"
@@ -557,6 +635,203 @@ const RecipeConfig = () => {
                       onClick={() => handleUpdateRecipe(deploymentConfig.fileName)}
                     >
                       Up Recipe
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Overrides Configuration */}
+        {processedOverridesConfig && (
+          <div className="config-file">
+            <h3 className="file-name">{processedOverridesConfig.fileName}</h3>
+            
+            {/* Search Input for filtering overrides items */}
+            <div className="search-container">
+              <input
+                type="text"
+                placeholder="Search overrides items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              <button className="search-button" type="button">
+                Search
+              </button>
+              {searchTerm && (
+                <button 
+                  className="clear-button" 
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
+            {processedOverridesConfig.error ? (
+              <div className="file-error">
+                <p>{processedOverridesConfig.error}</p>
+                <p className="file-path">Expected at: {processedOverridesConfig.path}</p>
+              </div>
+            ) : (
+              <>
+                <div className="config-items">
+                  {processedOverridesConfig.items.length > 0 ? (
+                    filterOverridesItems(processedOverridesConfig.items).map((item) => {
+                      // Find the original index in the unfiltered array
+                      const itemIndex = processedOverridesConfig.items.indexOf(item);
+                      return (
+                      <div key={itemIndex}>
+                        {/* Handle special objects */}
+                        {item.isObject ? (
+                          <div className="config-object">
+                            <div className="object-header">
+                              <span className="object-name">{item.key}</span>
+                              <div className="object-actions">
+                                <button 
+                                  className="action-btn update-btn"
+                                  onClick={() => handleStartEdit(processedOverridesConfig.fileName, itemIndex, item.value as string)}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </div>
+                            <div className="object-content">
+                              {editingItem?.fileName === processedOverridesConfig.fileName && editingItem?.index === itemIndex ? (
+                                <div className="edit-form">
+                                  <textarea
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="edit-textarea"
+                                    rows={6}
+                                    autoFocus
+                                  />
+                                  <div className="form-actions">
+                                    <button className="save-btn" onClick={handleSaveEdit}>Save</button>
+                                    <button className="cancel-btn" onClick={handleCancelEdit}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <pre className="object-value">{item.value}</pre>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`config-item ${item.commented ? 'commented' : ''}`}>
+                            <div className="config-content">
+                              <span className="config-key">{item.key}</span>
+                              <span className="config-separator">=</span>
+                              
+                              {editingItem?.fileName === processedOverridesConfig.fileName && editingItem?.index === itemIndex ? (
+                                <div className="edit-form">
+                                  <input
+                                    type="text"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="edit-input"
+                                    autoFocus
+                                  />
+                                  <button className="save-btn" onClick={handleSaveEdit}>Save</button>
+                                  <button className="cancel-btn" onClick={handleCancelEdit}>Cancel</button>
+                                </div>
+                              ) : (
+                                <span className="config-value">{item.value}</span>
+                              )}
+                            </div>
+                            
+                            {/* Actions for regular items */}
+                            <div className="config-actions">
+                              <button 
+                                className="action-btn update-btn"
+                                onClick={() => handleStartEdit(processedOverridesConfig.fileName, itemIndex, item.value as string)}
+                              >
+                                Update
+                              </button>
+                              <button 
+                                className="action-btn comment-btn"
+                                onClick={() => handleCommentItem(processedOverridesConfig.fileName, itemIndex)}
+                              >
+                                {item.commented ? 'Uncomment' : 'Comment'}
+                              </button>
+                              <button 
+                                className="action-btn delete-btn"
+                                onClick={() => handleDelete(processedOverridesConfig.fileName, itemIndex)}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )})
+                  ) : (
+                    <div className="empty-file">
+                      <p>File is empty or contains no key=value pairs</p>
+                    </div>
+                  )}
+
+                  {/* Show message when search has no results */}
+                  {searchTerm && filterOverridesItems(processedOverridesConfig.items).length === 0 && processedOverridesConfig.items.length > 0 && (
+                    <div className="no-results">
+                      <p>No items found matching "{searchTerm}"</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Add New Item Form for Overrides */}
+                {showAddForm === processedOverridesConfig.fileName ? (
+                  <div className="add-item-form">
+                    <div className="form-inputs">
+                      <input
+                        type="text"
+                        placeholder="Key"
+                        value={newItem.key}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, key: e.target.value }))}
+                        className="key-input"
+                      />
+                      <span className="form-separator">=</span>
+                      <input
+                        type="text"
+                        placeholder="Value"
+                        value={newItem.value}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, value: e.target.value }))}
+                        className="value-input"
+                      />
+                    </div>
+                    <div className="form-actions">
+                      <button 
+                        className="save-btn"
+                        onClick={() => handleAddItem(processedOverridesConfig.fileName)}
+                      >
+                        Save
+                      </button>
+                      <button 
+                        className="cancel-btn"
+                        onClick={() => {
+                          setShowAddForm(null)
+                          setNewItem({ key: '', value: '' })
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="action-buttons-container">
+                    <button 
+                      className="add-item-btn"
+                      onClick={() => setShowAddForm(processedOverridesConfig.fileName)}
+                    >
+                      Add New Element
+                    </button>
+                    <button 
+                      className="update-recipe-btn"
+                      onClick={() => handleUpdateRecipe(processedOverridesConfig.fileName)}
+                    >
+                      Save Overrides
                     </button>
                   </div>
                 )}
