@@ -4,13 +4,17 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <h2>HUMMINGBIRD</h2>
+        <h2>
+          <span className="platform-text">Platform Recipe Manager</span>{' '}
+          <span className="hummingbird-text">HUMMINGBIRD</span>
+        </h2>
       </div>
       <div className="navbar-menu">
         <a href="#home">Home</a>
-        <a href="#about">About</a>
-        <a href="#services">Services</a>
-        <a href="#contact">Contact</a>
+        <a href="#containers">Containers</a>
+        <a href="#images">Images</a>
+        <a href="#logs">Logs</a>
+        <a href="#h-configs">H.configs</a>
       </div>
     </nav>
   )

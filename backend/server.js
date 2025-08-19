@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { exec } = require('child_process');
 
 const app = express();
 const PORT = 3001;
@@ -445,6 +446,105 @@ app.post('/api/config/save', (req, res) => {
       details: error.message 
     });
   }
+});
+
+// API endpoint to get Docker containers
+app.get('/api/docker/containers', (req, res) => {
+  exec('docker ps --format "{{.ID}}\\t{{.Image}}\\t{{.CreatedAt}}\\t{{.Status}}\\t{{.Ports}}\\t{{.Names}}"', (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error executing docker ps:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to execute docker ps command',
+        details: error.message 
+      });
+    }
+
+    if (stderr) {
+      console.error('Docker ps stderr:', stderr);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Docker command error',
+        details: stderr 
+      });
+    }
+
+    try {
+      // Parse the docker ps output
+      const lines = stdout.trim().split('\n');
+      
+      if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) {
+        // No output
+        return res.json({ 
+          success: true, 
+          data: [] 
+        });
+      }
+
+      // Parse container data (no header line since we removed "table" from format)
+      const containers = lines.map(line => {
+        const parts = line.split('\t');
+        
+        // Parse ports to extract only the port mappings
+        let ports = parts[4] || '';
+        if (ports) {
+          // Extract port mappings in format hostPort->containerPort/protocol
+          const portMappings = [];
+          const debugPorts = [];
+          
+          // Match patterns like "0.0.0.0:20295->5000/tcp" or "[::]:20295->5000/tcp"
+          const portRegex = /(?:0\.0\.0\.0:|localhost:|\[::\]:)(\d+)->(\d+)\/(\w+)/g;
+          let match;
+          
+          while ((match = portRegex.exec(ports)) !== null) {
+            const hostPort = match[1];
+            const containerPort = match[2];
+            const protocol = match[3];
+            let mapping = `${hostPort}->${containerPort}/${protocol}`;
+            
+            // Apply color styling based on container port
+            if (containerPort === '7000') {
+              // Debug port - red and bold
+              mapping = `<span style="color: red; font-weight: bold;">${mapping}</span>`;
+              debugPorts.push(mapping);
+            } else if (containerPort === '5432') {
+              // Database port - orange and bold
+              mapping = `<span style="color: orange; font-weight: bold;">${mapping}</span>`;
+              portMappings.push(mapping);
+            } else {
+              portMappings.push(mapping);
+            }
+          }
+          
+          // Combine regular ports first, then debug ports at the end
+          const allPorts = [...portMappings, ...debugPorts];
+          ports = allPorts.join(', ');
+        }
+        
+        return {
+          containerId: parts[0] || '',
+          image: parts[1] || '',
+          created: parts[2] || '',
+          status: parts[3] || '',
+          ports: ports,
+          names: parts[5] || ''
+        };
+      });
+
+      res.json({ 
+        success: true, 
+        data: containers 
+      });
+
+    } catch (parseError) {
+      console.error('Error parsing docker ps output:', parseError);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to parse docker ps output',
+        details: parseError.message 
+      });
+    }
+  });
 });
 
 // Health check endpoint

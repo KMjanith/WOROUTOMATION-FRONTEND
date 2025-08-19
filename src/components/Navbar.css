@@ -17,7 +17,19 @@
 
 .navbar-brand h2 {
   margin: 0;
-  color: #bbf7d0;
+  color: #abf3c4;
+  font-size: 1.8rem;
+}
+
+.navbar-brand .platform-text {
+  color: rgb(226, 225, 225);
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.navbar-brand .hummingbird-text {
+  color: #58dd89;
+  font-weight: 700;
   font-size: 1.5rem;
 }
 
