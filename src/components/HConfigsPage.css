@@ -1,0 +1,31 @@
+.h-configs-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.h-configs-page h2 {
+  color: #2d5a3d;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.coming-soon {
+  background-color: #f0fdf4;
+  padding: 3rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px dashed #34d399;
+}
+
+.coming-soon p {
+  color: #374151;
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+}
+
+.coming-soon p:first-child {
+  font-weight: 600;
+  color: #2d5a3d;
+}

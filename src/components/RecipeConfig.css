@@ -8,7 +8,7 @@
   color: #2d5a3d;
   font-size: 1.8rem;
   margin-bottom: 0.1rem;
-  margin-top: -0.5rem;
+  margin-top: -1.3rem;
   text-align: center;
 }
 
@@ -482,7 +482,8 @@
   font-size: 0.75rem;
 }
 
-.key-input, .value-input {
+.key-input,
+.value-input {
   flex: 1;
   padding: 0.4rem;
   border: 1px solid #dcfce7;
@@ -491,7 +492,8 @@
   font-size: 0.75rem;
 }
 
-.key-input:focus, .value-input:focus {
+.key-input:focus,
+.value-input:focus {
   outline: none;
   border-color: #22c55e;
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1);
@@ -714,6 +716,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
