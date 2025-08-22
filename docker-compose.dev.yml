@@ -1,0 +1,44 @@
+# Development environment variables
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hummingbird-backend-dev
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${HOME}/.recipe:/home/nodeuser/.recipe:rw
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+    restart: unless-stopped
+    networks:
+      - hummingbird-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hummingbird-frontend-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
+    networks:
+      - hummingbird-network
+
+networks:
+  hummingbird-network:
+    driver: bridge
