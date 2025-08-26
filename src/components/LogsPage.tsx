@@ -225,14 +225,14 @@ const LogsPage: React.FC = () => {
         {/* Sidebar */}
         <div className="logs-sidebar">
           <div className="sidebar-header">
-            <div className="search-container">
-              <div className="search-input-wrapper">
+            <div className="search-container2">
+              <div className="search-input-wrapper2">
                 <input
                   type="text"
                   placeholder="Search services..."
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  className="search-input"
+                  className="search-input2"
                 />
                 {searchQuery && (
                   <button
@@ -245,7 +245,7 @@ const LogsPage: React.FC = () => {
                 )}
               </div>
               <button
-                className="refresh-btn"
+                className="refresh-btn2"
                 onClick={fetchDirectories}
                 disabled={loading}
                 title="Refresh services list"
@@ -534,7 +534,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
           {terminal.logs}
         </pre>
 
-        <div className="terminal-input-line">
+        <div className="terminal-input-line1">
           <span className="terminal-prompt">$ </span>
           <input
             ref={inputRef}
@@ -542,7 +542,7 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="terminal-input"
+            className="terminal-input1"
             placeholder="Press Enter to add new line"
           />
         </div>

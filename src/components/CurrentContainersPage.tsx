@@ -59,23 +59,23 @@ const CurrentContainersPage: React.FC = () => {
         <div className="current-containers-page">
             <h2>Current Docker Containers</h2>
             
-            <div className="controls-section">
+            <div className="controls-section1">
                 <input
                     type="text"
                     placeholder="Search containers..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="search-input"
+                    className="search-input1"
                 />
                 <button 
-                    className="refresh-btn"
+                    className="refresh-btn1"
                     onClick={fetchContainers}
                     disabled={loading}
                 >
                     {loading ? 'Refreshing...' : 'Refresh Containers'}
                 </button>
                 <button 
-                    className="clear-search-btn"
+                    className="clear-search-btn1"
                     onClick={() => setSearchTerm('')}
                     disabled={!searchTerm}
                 >
