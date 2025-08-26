@@ -51,14 +51,14 @@
   align-items: center;
 }
 
-.search-container {
+.search-container1 {
   position: relative;
   margin-bottom: 1rem;
   display: flex;
   gap: 0.5rem;
 }
 
-.search-input {
+.search-input1 {
   flex: 1;
   padding: 0.75rem 1rem;
   border: 2px solid #dcfce7;
@@ -69,13 +69,13 @@
   box-sizing: border-box;
 }
 
-.search-input:focus {
+.search-input1:focus {
   outline: none;
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
-.search-input::placeholder {
+.search-input1::placeholder {
   color: #9ca3af;
   font-style: italic;
 }

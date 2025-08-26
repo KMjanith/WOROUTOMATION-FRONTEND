@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hummingbird-backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.production
+    volumes:
+      # Mount Docker socket to allow Docker commands from inside container
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount user's .recipe directory
+      - ${HOME}/.recipe:/home/nodeuser/.recipe:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - hummingbird-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hummingbird-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hummingbird-network
+
+networks:
+  hummingbird-network:
+    driver: bridge
+
+volumes:
+  recipe-data:
+    driver: local

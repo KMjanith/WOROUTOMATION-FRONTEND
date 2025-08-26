@@ -12,8 +12,8 @@ const Navbar = () => {
       <div className="navbar-menu">
         <a href="#home">Home</a>
         <a href="#containers">Containers</a>
-        <a href="#images">Images</a>
         <a href="#logs">Logs</a>
+        <a href="#images">Images</a>
         <a href="#h-configs">H.configs</a>
       </div>
     </nav>

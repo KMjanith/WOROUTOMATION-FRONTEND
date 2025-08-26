@@ -422,13 +422,13 @@ const RecipeConfig = () => {
             <h3 className="file-name">{deploymentConfig.fileName}</h3>
 
             {/* Search Input for filtering services */}
-            <div className="search-container">
+            <div className="search-container1">
               <input
                 type="text"
                 placeholder="Search deployment services..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
+                className="search-input1"
               />
               <button className="search-button" type="button">
                 Search
@@ -649,13 +649,13 @@ const RecipeConfig = () => {
             <h3 className="file-name">{processedOverridesConfig.fileName}</h3>
 
             {/* Search Input for filtering overrides items */}
-            <div className="search-container">
+            <div className="search-container1">
               <input
                 type="text"
                 placeholder="Search overrides items..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
+                className="search-input1"
               />
               <button className="search-button" type="button">
                 Search
