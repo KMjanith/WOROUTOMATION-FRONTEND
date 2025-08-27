@@ -10,7 +10,8 @@
 
 /* Main Content */
 .main-content {
-  padding: 2rem;
+  padding-right: 1rem;
+  padding-left: 1rem;
 }
 
 /* Features Section */

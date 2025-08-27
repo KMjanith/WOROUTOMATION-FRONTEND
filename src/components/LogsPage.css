@@ -1,7 +1,16 @@
 .logs-container {
   display: flex;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 140px); /* Reduced height to account for the h2 */
   gap: 1rem;
+  margin-top: 1rem; /* Add space between heading and container */
+}
+
+.logs-page h2 {
+  color: #2d5a3d;
+  font-size: 1.8rem;
+  margin-bottom: 0.1rem;
+  margin-top: -0.7rem;
+  text-align: center;
 }
 
 /* Sidebar Styles */

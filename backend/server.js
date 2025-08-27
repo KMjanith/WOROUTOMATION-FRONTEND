@@ -651,7 +651,7 @@ app.get('/api/logs/files/:serviceName', (req, res) => {
 
 app.get('/api/logs/stream', (req, res) => {
   const filePath = req.query.path;
-  
+
   // Validate file path
   if (!filePath) {
     return res.status(400).json({ error: 'File path is required' });
@@ -677,7 +677,7 @@ app.get('/api/logs/stream', (req, res) => {
   // Execute tail command
   const tailCommand = `tail -n 10000 -f "${filePath}"`;
   console.log(`Starting log stream: ${tailCommand}`);
-  
+
   const tail = exec(tailCommand);
 
   // Handle stdout data
@@ -718,6 +718,94 @@ app.get('/api/logs/stream', (req, res) => {
     res.end();
   });
 });
+
+// DELETE /api/docker/containers/:id
+app.delete('/api/docker/containers/:id', (req, res) => {
+  const containerId = req.params.id;
+  if (!containerId) {
+    return res.status(400).json({ success: false, error: 'No container ID provided' });
+  }
+
+  exec(`docker rm -f ${containerId}`, (error, stdout, stderr) => {
+    if (error) {
+      return res.status(500).json({ success: false, error: stderr || error.message });
+    }
+    return res.json({ success: true, message: `Container ${containerId} deleted` });
+  });
+});
+
+
+// POST /api/up-recipe/deploy
+app.post('/api/up-recipe/deploy', (req, res) => {
+  const recipeDir = '/home/kavindu-janith/platformrecipe';
+  const deployCmd = 'sbt --client personal:deploy -y';
+
+  // Compose the shell command
+  const fullCmd = `cd "${recipeDir}" && ${deployCmd}`;
+
+  // Run the command
+  exec(fullCmd, { cwd: recipeDir }, (error, stdout, stderr) => {
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: stderr || error.message,
+        stdout,
+      });
+    }
+    res.json({
+      success: true,
+      message: 'UP-RECIPE deploy executed',
+      stdout,
+    });
+  });
+});
+
+app.get('/api/docker/images', (req, res) => {
+  exec('docker images --format "{{.Repository}}|{{.Tag}}|{{.ID}}|{{.CreatedSince}}|{{.Size}}"', (error, stdout, stderr) => {
+    if (error) {
+      return res.status(500).json({ success: false, error: stderr || error.message });
+    }
+    const images = stdout
+      .trim()
+      .split('\n')
+      .filter(line => line)
+      .map(line => {
+        const [repository, tag, imageId, created, size] = line.split('|');
+        return { repository, tag, imageId, created, size };
+      });
+    res.json({ success: true, data: images });
+  });
+});
+
+// DELETE /api/docker/images/dangling
+app.delete('/api/docker/images/dangling', (req, res) => {
+  exec('docker rmi $(docker images -f "dangling=true" -q)', (error, stdout, stderr) => {
+    if (error) {
+      // If there are no dangling images, Docker returns an error but that's not a real error
+      if (stderr.includes('no such image')) {
+        return res.json({
+          success: true,
+          message: 'No dangling images to delete'
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
+        error: stderr || error.message
+      });
+    }
+    
+    // Count the number of deleted images
+    const deletedCount = stdout.split('\n').filter(line => line.trim().length > 0).length;
+    
+    return res.json({
+      success: true,
+      message: `Successfully removed ${deletedCount} dangling image${deletedCount !== 1 ? 's' : ''}`,
+      stdout
+    });
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
