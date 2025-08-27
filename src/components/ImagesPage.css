@@ -1,31 +1,347 @@
+/* Page layout */
 .images-page {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+  margin-bottom: 20px;
 }
 
 .images-page h2 {
   color: #2d5a3d;
-  font-size: 2rem;
-  margin-bottom: 2rem;
+  margin: 0;
+  font-size: 1.8rem;
   text-align: center;
 }
 
-.coming-soon {
+/* Controls section */
+.controls-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
   background-color: #f0fdf4;
-  padding: 3rem;
-  border-radius: 12px;
+  border-radius: 8px;
+  border: 1px solid #d1fae5;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.images-count {
   text-align: center;
-  border: 2px dashed #34d399;
-}
-
-.coming-soon p {
-  color: #374151;
-  font-size: 1.1rem;
-  margin: 0.5rem 0;
-}
-
-.coming-soon p:first-child {
-  font-weight: 600;
   color: #2d5a3d;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.count-label {
+  font-size: 0.875rem;
+  color: #2d5a3d;
+  white-space: nowrap;
+}
+
+/* Search functionality */
+.search-bar-container {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+  min-width: 200px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background-color: white;
+  color: #1f2937;
+}
+
+.search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.clear-search-btn:hover {
+  color: #ef4444;
+}
+
+/* Button styles */
+.delete-danglings-btn {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  height: 42px;
+  min-width: 140px;
+  margin-left: 10px;
+}
+
+.delete-danglings-btn:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.delete-danglings-btn:disabled {
+  background-color: #6b7280;
+  cursor: not-allowed;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background-color: #1f4a2d;
+}
+
+/* Table styles */
+.images-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1.5rem;
+}
+
+.images-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid #d1fae5;
+}
+
+.images-table th {
+  background: #2d5a3d;
+  color: white;
+  font-weight: 600;
+  height: 0px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  border-right: 1px solid #767c75;
+  padding: 0.65rem 0.4rem;
+}
+
+.images-table td {
+  padding: 0.65rem 0.4rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 0.875rem;
+  border-right: 1px solid #e5e7eb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.images-table tr:hover {
+  background: #ecfdf5;
+}
+
+.images-table tr:last-child td {
+  border-bottom: none;
+}
+
+.images-table tr:nth-child(even) {
+  background-color: #f0fdf4;
+}
+
+.images-table th:last-child,
+.images-table td:last-child {
+  border-right: none;
+}
+
+/* Table column-specific styles */
+.images-table th:nth-child(1),
+.images-table td:nth-child(1) {
+  width: 25%;
+  /* Repository */
+}
+
+.images-table th:nth-child(2),
+.images-table td:nth-child(2) {
+  width: 15%;
+  /* Tag */
+}
+
+.images-table th:nth-child(3),
+.images-table td:nth-child(3) {
+  width: 22%;
+  /* Image ID */
+}
+
+.images-table th:nth-child(4),
+.images-table td:nth-child(4) {
+  width: 20%;
+  /* Created */
+}
+
+.images-table th:nth-child(5),
+.images-table td:nth-child(5) {
+  width: 18%;
+  /* Size */
+}
+
+.images-table .repository {
+  color: #059669;
+  font-weight: 500;
+  font-size: 0.875rem;
+  word-break: break-all;
+}
+
+.images-table .tag {
+  color: #0f766e;
+  font-size: 0.875rem;
+}
+
+.images-table .image-id {
+  font-family: monospace;
+  color: #1f2937;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.images-table .created {
+  color: #374151;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.images-table .size {
+  color: #065f46;
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Dangling image styles */
+.images-table tr.dangling-image {
+  background-color: rgba(220, 38, 38, 0.08);
+}
+
+.images-table tr.dangling-image:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+}
+
+.images-table .dangling-text {
+  color: #dc2626;
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* Dialog result messages */
+.delete-result {
+  margin-left: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.delete-result.success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #22c55e;
+}
+
+.delete-result.error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+
+/* No images state */
+.no-images {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  color: #6b7280;
+}
+
+/* Error and loading states */
+.error-message {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.loading-message {
+  text-align: center;
+  color: #6b7280;
+  margin: 2rem 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .controls-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .search-bar-container {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .count-label, .delete-danglings-btn {
+    margin-top: 0.5rem;
+    margin-left: 0;
+  }
+  
+  .delete-danglings-btn {
+    width: 100%;
+  }
+
+  .images-table {
+    table-layout: auto;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .images-table th,
+  .images-table td {
+    padding: 0.5rem 0.35rem;
+    font-size: 0.65rem;
+  }
+  
+  .images-table th {
+    font-size: 0.65rem;
+  }
 }

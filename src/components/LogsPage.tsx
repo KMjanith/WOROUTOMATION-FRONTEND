@@ -221,6 +221,7 @@ const LogsPage: React.FC = () => {
 
   return (
     <div className="logs-page">
+      <h2>Container Logs</h2>
       <div className="logs-container">
         {/* Sidebar */}
         <div className="logs-sidebar">
