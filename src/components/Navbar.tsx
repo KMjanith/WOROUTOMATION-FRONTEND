@@ -1,29 +1,31 @@
-import { useState, useEffect } from 'react'
-import './Navbar.css'
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { deployUpRecipe } from '../api/upRecipe.ts'; // Import the new API function
+import './Navbar.css';
 
 const Navbar = () => {
   const [deploying, setDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<string | null>(null);
 
   const handleUpRecipeClick = async () => {
-    setDeploying(true)
-    setDeployResult(null)
+    setDeploying(true);
+    setDeployResult(null);
 
     try {
-      const res = await fetch('http://localhost:3001/api/up-recipe/deploy', { method: 'POST' })
-      const data = await res.json();
+      const data = await deployUpRecipe();
       if (data.success) {
-        setDeployResult('Recipe Deployed successfully')
+        setDeployResult('Recipe Deployed successfully');
       } else {
-        setDeployResult('Error:  ' + (data.error || 'Unknown error'))
+        setDeployResult('Error:  ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
-      setDeployResult('Network error')
+      console.error('Network or API error:', error);
+      setDeployResult('Network error');
     }
-    setDeploying(false)
-  }
+    setDeploying(false);
+  };
 
-    // Hide message after 4 seconds
+  // Hide message after 4 seconds
   useEffect(() => {
     if (deployResult) {
       const timer = setTimeout(() => setDeployResult(null), 4000);
@@ -40,11 +42,12 @@ const Navbar = () => {
         </h2>
       </div>
       <div className="navbar-menu">
-        <a href="#home">Home</a>
-        <a href="#containers">Containers</a>
-        <a href="#logs">Logs</a>
-        <a href="#images">Images</a>
-        <a href="#h-configs">H.configs</a>
+        {/* Use Link components for navigation */}
+        <Link to="/">Home</Link>
+        <Link to="/containers">Containers</Link>
+        <Link to="/logs">Logs</Link>
+        <Link to="/images">Images</Link>
+        <Link to="/h-configs">H.configs</Link>
         <button
           className="up-recipe-nav"
           onClick={handleUpRecipeClick}
@@ -64,7 +67,7 @@ const Navbar = () => {
         </div>
       )}
     </nav>
-  )
-}
+  );
+};
 
-export default Navbar
+export default Navbar;
