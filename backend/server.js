@@ -4,6 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
+const pty = require('node-pty'); 
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = 3001;
@@ -788,16 +791,16 @@ app.delete('/api/docker/images/dangling', (req, res) => {
           message: 'No dangling images to delete'
         });
       }
-      
+
       return res.status(500).json({
         success: false,
         error: stderr || error.message
       });
     }
-    
+
     // Count the number of deleted images
     const deletedCount = stdout.split('\n').filter(line => line.trim().length > 0).length;
-    
+
     return res.json({
       success: true,
       message: `Successfully removed ${deletedCount} dangling image${deletedCount !== 1 ? 's' : ''}`,
@@ -807,7 +810,77 @@ app.delete('/api/docker/images/dangling', (req, res) => {
 });
 
 
-app.listen(PORT, () => {
-  console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
-  console.log(`Reading config files from: ${path.join(os.homedir(), '.recipe')}`);
+// Create HTTP server from the Express app
+const server = http.createServer(app);
+
+// Create WebSocket server attached to the HTTP server
+const wss = new WebSocket.Server({ noServer: true });
+
+// Handle WebSocket connections
+wss.on('connection', (ws) => {
+    console.log('Terminal WebSocket connection established');
+
+    // Determine which shell to use based on platform
+    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash'; // Use powershell on windows for better experience
+    const args = [];
+
+    // Set up pseudo-terminal using node-pty
+    const ptyProcess = pty.spawn(shell, args, {
+        name: 'xterm-color',
+        cols: 80, // Default columns
+        rows: 24,  // Default rows
+        cwd: os.homedir(), // Start in the user's home directory
+        env: process.env
+    });
+
+    // Send terminal output to client
+    ptyProcess.onData((data) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(data); // `node-pty` data is already a string
+        }
+    });
+
+    // Handle client input and pipe it to the terminal process
+    ws.on('message', (message) => {
+        try {
+            ptyProcess.write(message.toString());
+        } catch (error) {
+            console.error('Error writing to terminal process:', error);
+        }
+    });
+
+    // Handle client disconnect
+    ws.on('close', () => {
+        console.log('Terminal WebSocket connection closed');
+        ptyProcess.kill();
+    });
+
+    // Handle terminal process exit
+    ptyProcess.on('exit', (code) => {
+        console.log(`Terminal process exited with code ${code}`);
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(`\r\nProcess exited with code ${code}\r\n`);
+            ws.close();
+        }
+    });
+});
+
+// Handle HTTP upgrade requests and route them to the WebSocket server
+server.on('upgrade', (request, socket, head) => {
+    const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+
+    if (pathname === '/terminal') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } else {
+        // Destroy the socket if the path doesn't match
+        socket.destroy();
+    }
+});
+
+// Start the combined HTTP and WebSocket server
+server.listen(PORT, () => {
+    console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
+    console.log(`WebSocket terminal server is available at ws://localhost:${PORT}/terminal`);
 });

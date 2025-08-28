@@ -1,0 +1,23 @@
+# Backend Dockerfile for development
+FROM node:18-alpine
+
+# Install wget for health checks (if needed)
+RUN apk add --no-cache wget
+
+# Set the working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json first to leverage Docker cache
+COPY package*.json ./
+
+# Install all dependencies (dev and prod) for development
+RUN npm install
+
+# Copy the rest of your backend source code
+COPY . .
+
+# Expose the port your Express/Node app runs on
+EXPOSE 3001
+
+# Start the application with nodemon for file watching
+CMD ["npm", "start"]

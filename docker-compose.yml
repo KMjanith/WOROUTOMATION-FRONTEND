@@ -31,13 +31,15 @@ services:
       dockerfile: Dockerfile
     container_name: hummingbird-frontend
     ports:
-      - "80:80"
+      - "5173:80"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - hummingbird-network
+    environment:
+      - VITE_API_URL=http://backend:3001
 
 networks:
   hummingbird-network:

@@ -1,31 +1,151 @@
 .h-configs-page {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0 1rem 1rem;  /* Removed top padding, keeping horizontal and bottom padding */
+  height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
 }
 
-.h-configs-page h2 {
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;  /* Slightly reduced margin */
+}
+
+.terminal-header h2 {
   color: #2d5a3d;
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  text-align: center;
+  font-size: 1.5rem;
+  margin: 0;
 }
 
-.coming-soon {
-  background-color: #f0fdf4;
-  padding: 3rem;
-  border-radius: 12px;
-  text-align: center;
-  border: 2px dashed #34d399;
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
-.coming-soon p {
-  color: #374151;
-  font-size: 1.1rem;
-  margin: 0.5rem 0;
+.status-connected {
+  color: #15803d;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
 }
 
-.coming-soon p:first-child {
-  font-weight: 600;
-  color: #2d5a3d;
+.status-connected::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  margin-right: 0.5rem;
+}
+
+.status-connecting {
+  color: #ca8a04;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.status-connecting::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #eab308;
+  margin-right: 0.5rem;
+  animation: blink 1s infinite;
+}
+
+.status-disconnected {
+  color: #b91c1c;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.status-disconnected::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  margin-right: 0.5rem;
+}
+
+.reconnect-btn {
+  background-color: #2d5a3d;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.reconnect-btn:hover {
+  background-color: #1f4a2d;
+}
+
+.terminal-container {
+  flex: 1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.terminal-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(26, 26, 26, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #2d5a3d;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* XTerm specific styles */
+.xterm {
+  padding: 4px;
+}
+
+.xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.error-tooltip {
+  color: #f59e0b;
+  margin-left: 0.5rem;
+  cursor: help;
+  font-size: 1rem;
 }
