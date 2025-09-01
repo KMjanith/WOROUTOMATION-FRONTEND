@@ -64,9 +64,13 @@
   cursor: pointer;
   position: relative;
   min-width: 120px;
+  height: 36px; /* Fixed height */
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Add this to prevent any size changes */
+  box-sizing: border-box;
+  overflow: hidden; /* Prevents content from expanding the button */
 }
 
 .up-recipe-nav:disabled {
@@ -74,14 +78,27 @@
   cursor: not-allowed;
 }
 
+.button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  /* Add these properties */
+  position: relative;
+  line-height: 1;
+  font-size: 1rem; /* Set a consistent font size */
+}
+
 .spinner {
-  width: 22px;
-  height: 22px;
-  border: 3px solid #22c55e;
-  border-top: 3px solid #bbf7d0;
+  width: 20px; /* Reduced from 22px */
+  height: 20px; /* Reduced from 22px */
+  border: 2.5px solid #22c55e; /* Slightly thinner border */
+  border-top: 2.5px solid #bbf7d0;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
+  /* Ensure perfect centering */
+  margin: 0;
 }
 
 @keyframes spin {

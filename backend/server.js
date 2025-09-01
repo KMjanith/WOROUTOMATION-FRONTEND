@@ -15,6 +15,36 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+// Deployment tracking
+const deploymentSessions = new Map(); // Store active deployment sessions
+const { v4: uuidv4 } = require('uuid'); // For generating deployment IDs
+
+// Function to clean ANSI escape sequences and control characters
+function cleanTerminalOutput(text) {
+  return text
+    // Remove ANSI escape sequences (ESC followed by [ and parameters)
+    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+    .replace(/\x1b\[[?]?[0-9;]*[a-zA-Z]/g, '')
+    // Remove specific control sequences like [0J, [2K but NOT [info] or [local-docker]
+    .replace(/\[[\d]+[A-Z]/g, '')
+    .replace(/\[\d*J/g, '')
+    .replace(/\[\d*K/g, '')
+    .replace(/\[\d*H/g, '')
+    // Remove carriage return and form feed characters
+    .replace(/[\r\f]/g, '')
+    // Remove NULL characters
+    .replace(/\x00/g, '')
+    // Split by lines and process each line individually, preserving indentation
+    .split('\n')
+    .map(line => {
+      // Only trim trailing whitespace, preserve leading spaces for indentation
+      return line.replace(/\s+$/, '');
+    })
+    .filter(line => line.length > 0)
+    .join('\n')
+    .replace(/^\s+/, ''); // Only remove leading whitespace from the very beginning
+}
+
 // Function to parse .conf files
 function parseConfFile(filePath) {
   try {
@@ -737,6 +767,82 @@ app.delete('/api/docker/containers/:id', (req, res) => {
   });
 });
 
+// DELETE /api/docker/containers/delete-all - Delete all containers
+app.delete('/api/docker/containers/delete-all', (req, res) => {
+  console.log('Deleting all containers...');
+
+  // First, get the list of all container IDs
+  exec('docker ps -aq', async (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error getting container list:', stderr);
+      return res.status(500).json({
+        success: false,
+        error: stderr || error.message
+      });
+    }
+
+    const containerIds = stdout.trim().split('\n').filter(id => id.length > 0);
+    console.log('Found containers:', containerIds);
+
+    // If no containers exist
+    if (containerIds.length === 0) {
+      console.log('No containers to delete');
+      return res.json({
+        success: true,
+        message: 'No containers found to delete',
+        deletedContainers: []
+      });
+    }
+
+    console.log(`Attempting to delete ${containerIds.length} containers one by one...`);
+
+    const deletedContainers = [];
+    const failedContainers = [];
+
+    // Use a for...of loop to handle each deletion asynchronously
+    for (const containerId of containerIds) {
+      try {
+        await new Promise((resolve, reject) => {
+          exec(`docker rm -f ${containerId}`, (deleteError, deleteStdout, deleteStderr) => {
+            if (deleteError) {
+              console.error(`Error deleting container ${containerId}:`, deleteStderr);
+              failedContainers.push({
+                id: containerId,
+                error: deleteStderr || deleteError.message
+              });
+              reject(deleteError);
+            } else {
+              console.log(`Successfully deleted container: ${containerId}`);
+              deletedContainers.push(containerId);
+              resolve();
+            }
+          });
+        });
+      } catch (e) {
+        // Continue to the next container even if one fails
+        continue;
+      }
+    }
+
+    // After the loop, send the final response
+    if (failedContainers.length > 0) {
+      return res.status(500).json({
+        success: false,
+        message: `Successfully deleted ${deletedContainers.length} containers, but failed to delete ${failedContainers.length} containers`,
+        deletedContainers,
+        failedContainers
+      });
+    }
+
+    console.log('Successfully deleted all containers:', deletedContainers);
+    return res.json({
+      success: true,
+      message: `Successfully deleted all ${deletedContainers.length} containers`,
+      deletedContainers
+    });
+  });
+});
+
 
 // POST /api/up-recipe/deploy
 app.post('/api/up-recipe/deploy', (req, res) => {
@@ -760,6 +866,179 @@ app.post('/api/up-recipe/deploy', (req, res) => {
       message: 'UP-RECIPE deploy executed',
       stdout,
     });
+  });
+});
+
+// POST /api/deployment/start - Start a new deployment with real-time tracking
+app.post('/api/deployment/start', (req, res) => {
+  const { command } = req.body;
+  const deploymentId = uuidv4();
+  const recipeDir = '/home/kavindu-janith/platformrecipe';
+  
+  // Default to the personal:deploy command if none provided
+  const deployCmd = command || 'personal:deploy -y';
+  const fullCmd = `cd "${recipeDir}" && sbt --client ${deployCmd}`;
+
+  console.log(`Starting deployment ${deploymentId} with command: ${fullCmd}`);
+
+  // Create deployment session
+  const deploymentSession = {
+    id: deploymentId,
+    command: deployCmd,
+    status: 'running',
+    startTime: new Date(),
+    clients: new Set(), // WebSocket clients listening to this deployment
+    logs: []
+  };
+
+  deploymentSessions.set(deploymentId, deploymentSession);
+
+  // Start the deployment process
+  const deployProcess = exec(fullCmd, { cwd: recipeDir }, (error, stdout, stderr) => {
+    const session = deploymentSessions.get(deploymentId);
+    if (session) {
+      if (error) {
+        session.status = 'failed';
+        session.endTime = new Date();
+        session.logs.push({
+          timestamp: new Date().toISOString(),
+          level: 'error',
+          message: `Deployment failed: ${stderr || error.message}`
+        });
+        
+        // Notify all connected clients
+        session.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'status',
+              status: 'failed'
+            }));
+            client.send(JSON.stringify({
+              type: 'log',
+              level: 'error',
+              message: `Deployment failed: ${stderr || error.message}`
+            }));
+          }
+        });
+      } else {
+        session.status = 'completed';
+        session.endTime = new Date();
+        session.logs.push({
+          timestamp: new Date().toISOString(),
+          level: 'success',
+          message: 'Deployment completed successfully'
+        });
+        
+        // Notify all connected clients
+        session.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'status',
+              status: 'completed'
+            }));
+            client.send(JSON.stringify({
+              type: 'log',
+              level: 'success',
+              message: 'Deployment completed successfully'
+            }));
+          }
+        });
+      }
+    }
+  });
+
+  // Capture real-time output
+  deployProcess.stdout.on('data', (data) => {
+    const session = deploymentSessions.get(deploymentId);
+    if (session) {
+      const cleanMessage = cleanTerminalOutput(data.toString());
+      if (cleanMessage) {
+        // Split by lines and process each line separately
+        const lines = cleanMessage.split('\n').filter(line => line.trim().length > 0);
+        lines.forEach(line => {
+          // Check if the line already contains log level info like [info], [warn], [error]
+          const hasLogLevel = /^\s*\[(info|warn|error|debug)\]/i.test(line);
+          const logLevel = hasLogLevel ? 'raw' : 'info'; // Use 'raw' for lines that already have level info
+          
+          session.logs.push({
+            timestamp: new Date().toISOString(),
+            level: logLevel,
+            message: line
+          });
+          
+          // Send to all connected clients
+          session.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'log',
+                level: logLevel,
+                message: line
+              }));
+            }
+          });
+        });
+      }
+    }
+  });
+
+  deployProcess.stderr.on('data', (data) => {
+    const session = deploymentSessions.get(deploymentId);
+    if (session) {
+      const cleanMessage = cleanTerminalOutput(data.toString());
+      if (cleanMessage) {
+        // Split by lines and process each line separately
+        const lines = cleanMessage.split('\n').filter(line => line.trim().length > 0);
+        lines.forEach(line => {
+          session.logs.push({
+            timestamp: new Date().toISOString(),
+            level: 'warning',
+            message: line.trim()
+          });
+          
+          // Send to all connected clients
+          session.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'log',
+                level: 'warning',
+                message: line.trim()
+              }));
+            }
+          });
+        });
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    deploymentId: deploymentId,
+    message: 'Deployment started successfully'
+  });
+});
+
+// GET /api/deployment/:id/status - Get deployment status
+app.get('/api/deployment/:id/status', (req, res) => {
+  const { id } = req.params;
+  const session = deploymentSessions.get(id);
+  
+  if (!session) {
+    return res.status(404).json({
+      success: false,
+      error: 'Deployment not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    deployment: {
+      id: session.id,
+      command: session.command,
+      status: session.status,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      logs: session.logs
+    }
   });
 });
 
@@ -815,6 +1094,59 @@ const server = http.createServer(app);
 
 // Create WebSocket server attached to the HTTP server
 const wss = new WebSocket.Server({ noServer: true });
+const deploymentWss = new WebSocket.Server({ noServer: true });
+
+// Handle deployment WebSocket connections
+deploymentWss.on('connection', (ws, request) => {
+    const url = new URL(request.url, `http://${request.headers.host}`);
+    const deploymentId = url.pathname.split('/').pop(); // Extract deployment ID from URL
+    
+    console.log(`Deployment WebSocket connection established for deployment: ${deploymentId}`);
+    
+    const session = deploymentSessions.get(deploymentId);
+    if (!session) {
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Deployment not found'
+        }));
+        ws.close();
+        return;
+    }
+    
+    // Add client to session
+    session.clients.add(ws);
+    
+    // Send current status and existing logs
+    ws.send(JSON.stringify({
+        type: 'status',
+        status: session.status
+    }));
+    
+    // Send existing logs
+    session.logs.forEach(log => {
+        ws.send(JSON.stringify({
+            type: 'log',
+            level: log.level,
+            message: log.message,
+            timestamp: log.timestamp
+        }));
+    });
+    
+    // Handle client disconnect
+    ws.on('close', () => {
+        console.log(`Deployment WebSocket connection closed for deployment: ${deploymentId}`);
+        if (session) {
+            session.clients.delete(ws);
+        }
+    });
+    
+    ws.on('error', (error) => {
+        console.error(`Deployment WebSocket error for deployment ${deploymentId}:`, error);
+        if (session) {
+            session.clients.delete(ws);
+        }
+    });
+});
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
@@ -873,6 +1205,10 @@ server.on('upgrade', (request, socket, head) => {
         wss.handleUpgrade(request, socket, head, (ws) => {
             wss.emit('connection', ws, request);
         });
+    } else if (pathname.startsWith('/ws/deployment/')) {
+        deploymentWss.handleUpgrade(request, socket, head, (ws) => {
+            deploymentWss.emit('connection', ws, request);
+        });
     } else {
         // Destroy the socket if the path doesn't match
         socket.destroy();
@@ -883,4 +1219,5 @@ server.on('upgrade', (request, socket, head) => {
 server.listen(PORT, () => {
     console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
     console.log(`WebSocket terminal server is available at ws://localhost:${PORT}/terminal`);
+    console.log(`WebSocket deployment server is available at ws://localhost:${PORT}/ws/deployment/{deploymentId}`);
 });

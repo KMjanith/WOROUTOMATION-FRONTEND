@@ -544,7 +544,6 @@ const TerminalWindow: React.FC<TerminalWindowProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             className="terminal-input1"
-            placeholder="Press Enter to add new line"
           />
         </div>
       </div>

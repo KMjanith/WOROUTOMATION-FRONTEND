@@ -16,6 +16,8 @@ const CurrentContainersPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [deletingAll, setDeletingAll] = useState(false);
+    const [deleteAllSuccess, setDeleteAllSuccess] = useState(false);
 
     const fetchContainers = async () => {
         try {
@@ -62,6 +64,53 @@ const CurrentContainersPage: React.FC = () => {
             }
         } catch (err) {
             alert('Error deleting container');
+        }
+    };
+
+    const handleDeleteAllContainers = async () => {
+        if (containers.length === 0) {
+            alert('No containers to delete');
+            return;
+        }
+
+        if (!window.confirm(`Are you sure you want to delete all ${containers.length} containers? This action cannot be undone.`)) {
+            return;
+        }
+
+        setDeletingAll(true);
+        setDeleteAllSuccess(false);
+        setError(null);
+
+        try {
+            console.log('Sending delete all containers request...');
+            const response = await fetch('http://localhost:3001/api/docker/containers/delete-all', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            console.log('Response status:', response.status);
+            const result = await response.json();
+            console.log('Response result:', result);
+
+            if (result.success) {
+                setDeleteAllSuccess(true);
+                setTimeout(() => setDeleteAllSuccess(false), 3000); // Hide success message after 3 seconds
+                console.log('All containers deleted successfully');
+            } else {
+                console.error('Delete failed:', result.error);
+                setError(result.error || 'Failed to delete containers');
+            }
+
+            // Refresh the container list
+            console.log('Refreshing container list...');
+            await fetchContainers();
+        } catch (err) {
+            console.error('Network error deleting all containers:', err);
+            setError('Error occurred while deleting containers');
+        } finally {
+            setDeletingAll(false);
         }
     };
 
@@ -124,14 +173,37 @@ const CurrentContainersPage: React.FC = () => {
                             : `Showing ${containers.length} Docker containers`
                         }
                     </div>
+
+                    {deleteAllSuccess && (
+                        <div className="delete-all-success">
+                            ✅ All containers deleted successfully!
+                        </div>
+                    )}
                     
-                    <button
-                        className="refresh-containers-btn"
-                        onClick={fetchContainers}
-                        disabled={loading}
-                    >
-                        {loading ? 'Refreshing...' : 'Refresh'}
-                    </button>
+                    <div className="action-buttons">
+                        <button
+                            className="refresh-containers-btn"
+                            onClick={fetchContainers}
+                            disabled={loading}
+                        >
+                            {loading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                        <button
+                            className="delete-all-btn"
+                            onClick={handleDeleteAllContainers}
+                            disabled={deletingAll || containers.length === 0}
+                            title="Delete all containers"
+                        >
+                            {deletingAll ? (
+                                <span className="delete-all-loading">
+                                    <span className="spinner-small"></span>
+                                    Deleting...
+                                </span>
+                            ) : (
+                                'Delete All'
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 

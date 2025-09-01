@@ -1,0 +1,278 @@
+/* Deployment Modal Styles */
+.deployment-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.deployment-modal {
+  background-color: #1e1e1e;
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  width: 95%;
+  max-width: 1200px;
+  height: 80%;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
+}
+
+.deployment-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #333;
+  background-color: #2a2a2a;
+  border-radius: 6px 6px 0 0;
+}
+
+.deployment-modal-header h3 {
+  margin: 0;
+  color: #00ff00;
+  font-size: 1.2rem;
+}
+
+.deployment-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-text {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.connection-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connection-indicator.connected {
+  background-color: #00ff00;
+  animation: pulse 2s infinite;
+}
+
+.connection-indicator.disconnected {
+  background-color: #ff4444;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #ff4444;
+}
+
+.deployment-logs {
+  flex: 1;
+  padding: 1rem;
+  background-color: #0f0f0f;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.no-logs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: #888;
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #333;
+  border-top: 3px solid #00ff00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.log-entry {
+  margin-bottom: 0.1rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  flex-wrap: wrap;
+  white-space: pre;
+}
+
+.log-entry:hover {
+  background-color: #1a1a1a;
+}
+
+.log-level {
+  font-weight: bold;
+  margin-right: 0.4rem;
+  min-width: 60px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.log-message {
+  color: #ffffff;
+  word-wrap: break-word;
+  flex: 1;
+  white-space: pre;
+}
+
+.deployment-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #333;
+  background-color: #2a2a2a;
+  border-radius: 0 0 6px 6px;
+}
+
+.deployment-info {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.deployment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.deployment-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.success-button {
+  background-color: #00ff00;
+  color: #000000;
+}
+
+.success-button:hover {
+  background-color: #00cc00;
+}
+
+.error-button {
+  background-color: #ff4444;
+  color: #ffffff;
+}
+
+.error-button:hover {
+  background-color: #cc3333;
+}
+
+.secondary-button {
+  background-color: #666;
+  color: #ffffff;
+}
+
+.secondary-button:hover {
+  background-color: #555;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scrollbar styling for logs */
+.deployment-logs::-webkit-scrollbar {
+  width: 8px;
+}
+
+.deployment-logs::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.deployment-logs::-webkit-scrollbar-thumb {
+  background: #00ff00;
+  border-radius: 4px;
+}
+
+.deployment-logs::-webkit-scrollbar-thumb:hover {
+  background: #00cc00;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .deployment-modal {
+    width: 95%;
+    height: 90%;
+  }
+  
+  .deployment-modal-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .deployment-modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .deployment-actions {
+    width: 100%;
+    justify-content: center;
+  }
+}

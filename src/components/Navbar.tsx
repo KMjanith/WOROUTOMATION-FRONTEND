@@ -1,22 +1,39 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { deployUpRecipe } from '../api/upRecipe.ts'; // Import the new API function
+import DeploymentModal from './DeploymentModal';
 import './Navbar.css';
 
 const Navbar = () => {
   const [deploying, setDeploying] = useState(false);
   const [deployResult, setDeployResult] = useState<string | null>(null);
+  const [showDeploymentModal, setShowDeploymentModal] = useState(false);
+  const [deploymentId, setDeploymentId] = useState<string | null>(null);
 
   const handleUpRecipeClick = async () => {
     setDeploying(true);
     setDeployResult(null);
 
     try {
-      const data = await deployUpRecipe();
+      // Start deployment and get deployment ID
+      const response = await fetch('http://localhost:3001/api/deployment/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          command: 'personal:deploy -y'
+        })
+      });
+
+      const data = await response.json();
+      
       if (data.success) {
-        setDeployResult('Recipe Deployed successfully');
+        // Set deployment ID and show modal
+        setDeploymentId(data.deploymentId);
+        setShowDeploymentModal(true);
+        setDeployResult('Deployment started successfully');
       } else {
-        setDeployResult('Error:  ' + (data.error || 'Unknown error'));
+        setDeployResult('Error: ' + (data.error || 'Failed to start deployment'));
       }
     } catch (error) {
       console.error('Network or API error:', error);
@@ -52,19 +69,28 @@ const Navbar = () => {
           className="up-recipe-nav"
           onClick={handleUpRecipeClick}
           disabled={deploying}
-          style={{ position: 'relative', minWidth: '120px' }}
         >
-          {deploying ? (
-            <span className="spinner"></span>
-          ) : (
-            'UP-RECIPE'
-          )}
+          <span className="button-content">
+            {deploying ? (
+              <span className="spinner"></span>
+            ) : (
+              'UP-RECIPE'
+            )}
+          </span>
         </button>
       </div>
       {deployResult && (
         <div className="deploy-result">
           {deployResult}
         </div>
+      )}
+      
+      {/* Deployment Modal */}
+      {showDeploymentModal && deploymentId && (
+        <DeploymentModal
+          deploymentId={deploymentId}
+          onClose={() => setShowDeploymentModal(false)}
+        />
       )}
     </nav>
   );

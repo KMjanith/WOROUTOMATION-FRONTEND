@@ -33,7 +33,7 @@ const HConfigsPage: React.FC = () => {
         },
         convertEol: true,
         rows: 24,
-        cols: 80
+        cols: 120
       });
 
       terminalInstance.current = term;
