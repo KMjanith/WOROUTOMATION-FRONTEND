@@ -1111,6 +1111,65 @@ app.get('/api/docker/images', (req, res) => {
   });
 });
 
+// DELETE /api/docker/images/:id - Delete a specific image
+app.delete('/api/docker/images/:id', (req, res) => {
+  const imageId = req.params.id;
+  if (!imageId) {
+    return res.status(400).json({ success: false, error: 'No image ID provided' });
+  }
+
+  // First, get the image details to include repository and tag in success message
+  exec('docker images --format "{{.Repository}}|{{.Tag}}|{{.ID}}"', (infoError, infoStdout, infoStderr) => {
+    let imageInfo = null;
+    
+    console.log('Looking for image info for ID:', imageId);
+    
+    if (!infoError && infoStdout) {
+      // Find the image that matches our ID
+      const lines = infoStdout.trim().split('\n');
+      console.log('Available images:', lines);
+      
+      for (const line of lines) {
+        const [repository, tag, shortId] = line.split('|');
+        console.log(`Checking: ${repository}:${tag} with ID ${shortId} against ${imageId}`);
+        
+        // Match both ways: short ID vs provided ID
+        if (shortId === imageId || imageId.startsWith(shortId) || shortId.startsWith(imageId)) {
+          imageInfo = { repository, tag, id: imageId };
+          console.log('Found matching image:', imageInfo);
+          break;
+        }
+      }
+    }
+
+    // Now delete the image
+    exec(`docker rmi -f ${imageId}`, (error, stdout, stderr) => {
+      if (error) {
+        return res.status(500).json({ success: false, error: stderr || error.message });
+      }
+      
+      // Create a more informative success message
+      let message;
+      if (imageInfo) {
+        if (imageInfo.repository === '<none>' && imageInfo.tag === '<none>') {
+          message = `Image ${imageId} (dangling image) deleted`;
+        } else if (imageInfo.repository === '<none>') {
+          message = `Image ${imageId} (tag: <strong>${imageInfo.tag}</strong>) deleted`;
+        } else if (imageInfo.tag === '<none>') {
+          message = `Image ${imageId} (${imageInfo.repository}) deleted`;
+        } else {
+          message = `Image ${imageInfo.repository}:<strong>${imageInfo.tag}</strong> (${imageId}) deleted`;
+        }
+      } else {
+        message = `Image ${imageId} deleted`;
+      }
+      
+      console.log('Delete success message:', message);
+      return res.json({ success: true, message });
+    });
+  });
+});
+
 // DELETE /api/docker/images/dangling
 app.delete('/api/docker/images/dangling', (req, res) => {
   exec('docker rmi $(docker images -f "dangling=true" -q)', (error, stdout, stderr) => {

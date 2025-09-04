@@ -33,7 +33,15 @@ const Dialog: React.FC<DialogProps> = ({
           <h3>{title}</h3>
         </div>
         <div className="dialog-content">
-          {typeof message === 'string' ? <p>{message}</p> : message}
+          {typeof message === 'string' ? (
+            message.includes('<') ? (
+              <p dangerouslySetInnerHTML={{ __html: message }}></p>
+            ) : (
+              <p>{message}</p>
+            )
+          ) : (
+            message
+          )}
         </div>
         <div className="dialog-actions">
           {showCancel && (

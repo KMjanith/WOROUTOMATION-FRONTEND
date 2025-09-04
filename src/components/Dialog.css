@@ -25,6 +25,11 @@
   max-height: 80vh;
 }
 
+/* Wider dialog for success messages with detailed content */
+.dialog-container.success {
+  max-width: 700px;
+}
+
 .dialog-header {
   padding: 1.25rem;
   background-color: #2d5a3d;

@@ -162,6 +162,68 @@ const ImagesPage: React.FC = () => {
     }
   };
 
+  // Function to handle individual image deletion
+  const handleDeleteImage = async (imageId: string) => {
+    setDialog({
+      isOpen: true,
+      title: 'Delete Image',
+      message: `Are you sure you want to delete image ${imageId}? This action cannot be undone.`,
+      type: 'confirm',
+      confirmLabel: 'Delete',
+      showCancel: true,
+      onConfirm: () => confirmDeleteImage(imageId),
+    });
+  };
+
+  const confirmDeleteImage = async (imageId: string) => {
+    closeDialog();
+
+    try {
+      const res = await fetch(`http://localhost:3001/api/docker/images/${imageId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Show success message
+        setDialog({
+          isOpen: true,
+          title: 'Image Deleted',
+          message: data.message,
+          type: 'success',
+          confirmLabel: 'Okay',
+          showCancel: false,
+          onConfirm: () => {
+            closeDialog();
+            fetchImages(); // Refresh images list
+          },
+        });
+      } else {
+        // Show error dialog
+        setDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.error || 'Failed to delete image',
+          type: 'error',
+          confirmLabel: 'Okay',
+          showCancel: false,
+          onConfirm: closeDialog,
+        });
+      }
+    } catch (err) {
+      // Show network error dialog
+      setDialog({
+        isOpen: true,
+        title: 'Network Error',
+        message: 'Failed to connect to backend server',
+        type: 'error',
+        confirmLabel: 'Okay',
+        showCancel: false,
+        onConfirm: closeDialog,
+      });
+    }
+  };
+
   // Helper function to check if an image is dangling
   const isDanglingImage = (image: DockerImage): boolean => {
     return image.repository === '<none>' || image.tag === '<none>';
@@ -242,6 +304,7 @@ const ImagesPage: React.FC = () => {
                     <th>Image ID</th>
                     <th>Created</th>
                     <th>Size</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -267,6 +330,15 @@ const ImagesPage: React.FC = () => {
                       <td className="image-id">{img.imageId}</td>
                       <td className="created">{img.created}</td>
                       <td className="size">{img.size}</td>
+                      <td className="actions">
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDeleteImage(img.imageId)}
+                          title="Delete Image"
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
