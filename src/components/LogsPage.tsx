@@ -129,6 +129,52 @@ const LogsPage: React.FC = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  // Open a real terminal in VS Code at the log file location
+  const openRealTerminal = async (file: LogFile): Promise<void> => {
+    try {
+      // Extract directory path from file path
+      const dirPath = file.path.substring(0, file.path.lastIndexOf('/'));
+      
+      // Send request to backend to open terminal
+      const response = await fetch('http://localhost:3001/api/terminal/open', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: dirPath,
+          command: `tail -n 100000 -f "${file.path}"` // Optional: start with tail command
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Terminal response:', result); // Debug log
+      
+      // Handle both success and failure cases
+      if (result.success === true) {
+        // Success case - just log, no alert
+        console.log('Terminal opened successfully:', result.message);
+      } else if (result.success === false) {
+        // Explicit failure case
+        const errorMsg = result.error || result.message || 'Unknown error occurred';
+        console.error('Failed to open terminal:', errorMsg);
+      } else {
+        // Handle cases where success field might not exist
+        const message = result.message || 'Terminal operation completed';
+        console.log('Terminal operation completed:', message);
+      }
+      
+    } catch (error) {
+      console.error('Error opening terminal:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error opening terminal: ${errorMessage}. Please manually open a terminal and navigate to the log directory.`);
+    }
+  };
+
   // Open new terminal window with safe positioning
   const handleStreamLog = (file: LogFile): void => {
     const terminalId = `terminal-${Date.now()}`;
@@ -337,9 +383,11 @@ const LogsPage: React.FC = () => {
                           <td className="file-date">{formatDate(file.stats.mtime)}</td>
                           <td className="file-actions">
                             <button className="view-btn" onClick={() => handleStreamLog(file)}>
+                              Open Log Viewer
+                            </button>
+                            <button className="terminal-btn" onClick={() => openRealTerminal(file)}>
                               Open Terminal
                             </button>
-                            <button className="download-btn">Download</button>
                           </td>
                         </tr>
                       ))}

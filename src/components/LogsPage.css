@@ -291,7 +291,7 @@
 }
 
 .view-btn,
-.download-btn {
+.terminal-btn {
   padding: 0.4rem 0.8rem;
   border: 1px solid;
   border-radius: 4px;
@@ -313,15 +313,17 @@
   color: white;
 }
 
-.download-btn {
-  background: #e3f2fd;
-  border-color: #2196f3;
-  color: #1976d2;
+.terminal-btn {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
 }
 
-.download-btn:hover {
-  background: #2196f3;
-  color: white;
+.terminal-btn:hover {
+  background: #ffc107;
+  color: #212529;
 }
 
 /* Loading and Error States */

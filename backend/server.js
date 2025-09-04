@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
-const pty = require('node-pty'); 
+const pty = require('node-pty');
 const http = require('http');
 const WebSocket = require('ws');
 
@@ -869,12 +869,64 @@ app.post('/api/up-recipe/deploy', (req, res) => {
   });
 });
 
+// POST /api/terminal/open - Open a real terminal  
+app.post('/api/terminal/open', (req, res) => {
+  var { path, command } = req.body;
+  const { spawn } = require('child_process');
+
+  console.log(command);
+
+  // Define the command to launch the terminal
+  const command1 = '/usr/bin/gnome-terminal';
+
+  // The command string from the request body needs to be split into an array of arguments.
+  const commandArgs = command.match(/(?:[^\s"]+|"[^"]*")+/g).map(arg => {
+    return arg.replace(/^"|"$/g, '');
+  });
+
+  // The correct UUID from your dconf output.
+  const profileUUID = 'b1dcc9dd-5262-4d8d-a863-c897e6d979b9'; 
+
+  // Construct the final 'args' array, including the profile UUID.
+  const args = [
+    '--profile',
+    profileUUID,
+    '--',
+    ...commandArgs
+  ];
+  // --- End of change ---
+
+  // Spawn the process with error handling
+  const child = spawn(command1, args, {
+    detached: true,
+    stdio: 'ignore',
+    env: {
+      DISPLAY: ':1'
+    }
+  });
+
+  // Check for the 'error' event
+  child.on('error', (err) => {
+    console.error('Failed to start a new terminal:', err);
+  });
+
+  // Log process information
+  console.log(`Attempted to start new terminal. PID: ${child.pid}`);
+  console.log('A new GNOME Terminal session has been started!');
+
+  res.json({
+    success: true,
+    message: `Terminal opened successfully${path ? ` with tail -f for ${path}` : ''}`,
+    pid: child.pid
+  });
+});
+
 // POST /api/deployment/start - Start a new deployment with real-time tracking
 app.post('/api/deployment/start', (req, res) => {
   const { command } = req.body;
   const deploymentId = uuidv4();
   const recipeDir = '/home/kavindu-janith/platformrecipe';
-  
+
   // Default to the personal:deploy command if none provided
   const deployCmd = command || 'personal:deploy -y';
   const fullCmd = `cd "${recipeDir}" && sbt --client ${deployCmd}`;
@@ -905,7 +957,7 @@ app.post('/api/deployment/start', (req, res) => {
           level: 'error',
           message: `Deployment failed: ${stderr || error.message}`
         });
-        
+
         // Notify all connected clients
         session.clients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -928,7 +980,7 @@ app.post('/api/deployment/start', (req, res) => {
           level: 'success',
           message: 'Deployment completed successfully'
         });
-        
+
         // Notify all connected clients
         session.clients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -959,13 +1011,13 @@ app.post('/api/deployment/start', (req, res) => {
           // Check if the line already contains log level info like [info], [warn], [error]
           const hasLogLevel = /^\s*\[(info|warn|error|debug)\]/i.test(line);
           const logLevel = hasLogLevel ? 'raw' : 'info'; // Use 'raw' for lines that already have level info
-          
+
           session.logs.push({
             timestamp: new Date().toISOString(),
             level: logLevel,
             message: line
           });
-          
+
           // Send to all connected clients
           session.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
@@ -994,7 +1046,7 @@ app.post('/api/deployment/start', (req, res) => {
             level: 'warning',
             message: line.trim()
           });
-          
+
           // Send to all connected clients
           session.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
@@ -1021,14 +1073,14 @@ app.post('/api/deployment/start', (req, res) => {
 app.get('/api/deployment/:id/status', (req, res) => {
   const { id } = req.params;
   const session = deploymentSessions.get(id);
-  
+
   if (!session) {
     return res.status(404).json({
       success: false,
       error: 'Deployment not found'
     });
   }
-  
+
   res.json({
     success: true,
     deployment: {
@@ -1098,126 +1150,126 @@ const deploymentWss = new WebSocket.Server({ noServer: true });
 
 // Handle deployment WebSocket connections
 deploymentWss.on('connection', (ws, request) => {
-    const url = new URL(request.url, `http://${request.headers.host}`);
-    const deploymentId = url.pathname.split('/').pop(); // Extract deployment ID from URL
-    
-    console.log(`Deployment WebSocket connection established for deployment: ${deploymentId}`);
-    
-    const session = deploymentSessions.get(deploymentId);
-    if (!session) {
-        ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Deployment not found'
-        }));
-        ws.close();
-        return;
-    }
-    
-    // Add client to session
-    session.clients.add(ws);
-    
-    // Send current status and existing logs
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const deploymentId = url.pathname.split('/').pop(); // Extract deployment ID from URL
+
+  console.log(`Deployment WebSocket connection established for deployment: ${deploymentId}`);
+
+  const session = deploymentSessions.get(deploymentId);
+  if (!session) {
     ws.send(JSON.stringify({
-        type: 'status',
-        status: session.status
+      type: 'error',
+      message: 'Deployment not found'
     }));
-    
-    // Send existing logs
-    session.logs.forEach(log => {
-        ws.send(JSON.stringify({
-            type: 'log',
-            level: log.level,
-            message: log.message,
-            timestamp: log.timestamp
-        }));
-    });
-    
-    // Handle client disconnect
-    ws.on('close', () => {
-        console.log(`Deployment WebSocket connection closed for deployment: ${deploymentId}`);
-        if (session) {
-            session.clients.delete(ws);
-        }
-    });
-    
-    ws.on('error', (error) => {
-        console.error(`Deployment WebSocket error for deployment ${deploymentId}:`, error);
-        if (session) {
-            session.clients.delete(ws);
-        }
-    });
+    ws.close();
+    return;
+  }
+
+  // Add client to session
+  session.clients.add(ws);
+
+  // Send current status and existing logs
+  ws.send(JSON.stringify({
+    type: 'status',
+    status: session.status
+  }));
+
+  // Send existing logs
+  session.logs.forEach(log => {
+    ws.send(JSON.stringify({
+      type: 'log',
+      level: log.level,
+      message: log.message,
+      timestamp: log.timestamp
+    }));
+  });
+
+  // Handle client disconnect
+  ws.on('close', () => {
+    console.log(`Deployment WebSocket connection closed for deployment: ${deploymentId}`);
+    if (session) {
+      session.clients.delete(ws);
+    }
+  });
+
+  ws.on('error', (error) => {
+    console.error(`Deployment WebSocket error for deployment ${deploymentId}:`, error);
+    if (session) {
+      session.clients.delete(ws);
+    }
+  });
 });
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
-    console.log('Terminal WebSocket connection established');
+  console.log('Terminal WebSocket connection established');
 
-    // Determine which shell to use based on platform
-    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash'; // Use powershell on windows for better experience
-    const args = [];
+  // Determine which shell to use based on platform
+  const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash'; // Use powershell on windows for better experience
+  const args = [];
 
-    // Set up pseudo-terminal using node-pty
-    const ptyProcess = pty.spawn(shell, args, {
-        name: 'xterm-color',
-        cols: 80, // Default columns
-        rows: 24,  // Default rows
-        cwd: os.homedir(), // Start in the user's home directory
-        env: process.env
-    });
+  // Set up pseudo-terminal using node-pty
+  const ptyProcess = pty.spawn(shell, args, {
+    name: 'xterm-color',
+    cols: 80, // Default columns
+    rows: 24,  // Default rows
+    cwd: os.homedir(), // Start in the user's home directory
+    env: process.env
+  });
 
-    // Send terminal output to client
-    ptyProcess.onData((data) => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(data); // `node-pty` data is already a string
-        }
-    });
+  // Send terminal output to client
+  ptyProcess.onData((data) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(data); // `node-pty` data is already a string
+    }
+  });
 
-    // Handle client input and pipe it to the terminal process
-    ws.on('message', (message) => {
-        try {
-            ptyProcess.write(message.toString());
-        } catch (error) {
-            console.error('Error writing to terminal process:', error);
-        }
-    });
+  // Handle client input and pipe it to the terminal process
+  ws.on('message', (message) => {
+    try {
+      ptyProcess.write(message.toString());
+    } catch (error) {
+      console.error('Error writing to terminal process:', error);
+    }
+  });
 
-    // Handle client disconnect
-    ws.on('close', () => {
-        console.log('Terminal WebSocket connection closed');
-        ptyProcess.kill();
-    });
+  // Handle client disconnect
+  ws.on('close', () => {
+    console.log('Terminal WebSocket connection closed');
+    ptyProcess.kill();
+  });
 
-    // Handle terminal process exit
-    ptyProcess.on('exit', (code) => {
-        console.log(`Terminal process exited with code ${code}`);
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(`\r\nProcess exited with code ${code}\r\n`);
-            ws.close();
-        }
-    });
+  // Handle terminal process exit
+  ptyProcess.on('exit', (code) => {
+    console.log(`Terminal process exited with code ${code}`);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(`\r\nProcess exited with code ${code}\r\n`);
+      ws.close();
+    }
+  });
 });
 
 // Handle HTTP upgrade requests and route them to the WebSocket server
 server.on('upgrade', (request, socket, head) => {
-    const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
 
-    if (pathname === '/terminal') {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
-        });
-    } else if (pathname.startsWith('/ws/deployment/')) {
-        deploymentWss.handleUpgrade(request, socket, head, (ws) => {
-            deploymentWss.emit('connection', ws, request);
-        });
-    } else {
-        // Destroy the socket if the path doesn't match
-        socket.destroy();
-    }
+  if (pathname === '/terminal') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else if (pathname.startsWith('/ws/deployment/')) {
+    deploymentWss.handleUpgrade(request, socket, head, (ws) => {
+      deploymentWss.emit('connection', ws, request);
+    });
+  } else {
+    // Destroy the socket if the path doesn't match
+    socket.destroy();
+  }
 });
 
 // Start the combined HTTP and WebSocket server
 server.listen(PORT, () => {
-    console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
-    console.log(`WebSocket terminal server is available at ws://localhost:${PORT}/terminal`);
-    console.log(`WebSocket deployment server is available at ws://localhost:${PORT}/ws/deployment/{deploymentId}`);
+  console.log(`HUMMINGBIRD backend server running on http://localhost:${PORT}`);
+  console.log(`WebSocket terminal server is available at ws://localhost:${PORT}/terminal`);
+  console.log(`WebSocket deployment server is available at ws://localhost:${PORT}/ws/deployment/{deploymentId}`);
 });
